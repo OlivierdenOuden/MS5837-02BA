@@ -2,6 +2,8 @@
 #
 #	MS5837-02BA Pressure sensor read I2C port
 #
+#	Based on; https://github.com/bluerobotics/ms5837-python/blob/master/ms5837.py
+#
 #	Olivier den Ouden
 #	Royal Netherlands Meteorological Institute
 #	RDSA
@@ -13,32 +15,20 @@
 import smbus
 from time import sleep
 
-# Models
 MODEL_02BA = 0
-MODEL_30BA = 1
-
-# Oversampling options
-OSR_256 = 0
-OSR_512 = 1
-OSR_1024= 2
-OSR_2048= 3
-OSR_4096= 4
-OSR_8192= 5
 
 class MS5837(object):
-	#registers
+	#hex/byte commants 
 	_MS5837_ADDR		= 0x76
 	_MS5837_RESET		= 0x1E
 	_MS5837_ADC_READ	= 0x00
 	_MS5837_PROM_READ	= 0xA0
-	_MS5837_D1		= 0x40
-	_MS5837_D2		= 0x50
+	_MS5837_D1			= 0x40
+	_MS5837_D2			= 0x50
 	
 	def _init_(self, model=MODEL_02BA, bus=1):
 		self._model = model
 
-		self._pressure = 0
-		self._temperature = 0
 		self._D1 = 0
 		self._D2 = 0
 
@@ -59,17 +49,17 @@ class MS5837(object):
 		crc = (self._C[0] & 0xF000) >> 12
 		if crc != self._crc4(self._C):
 			print('PROM read error, CrC failed!')
-			retunr False
+			return False
 
-		return True
+		return True, self._C
 
-	def read(self, oversampling = OSR_8192):
+	def read(self, oversampling = 5):
 		if self._bus is None:
 			print('No bus!')
 
 			return False
 
-		if oversampling < OSR_256 or oversampling > OSR_8192:
+		if oversampling < 0 or oversampling > 5:
 
 			print('Invalid oversampling option!')
 			return False
@@ -79,7 +69,7 @@ class MS5837(object):
 
 		sleep(2.5e-6 * 2**(8+oversampling))
 
-		d = self._bus.read_i2c_block_data(self._MS5837_ADDR, self.MS5837_ADC_READ,3)
+		d = self._bus.read_i2c_block_data(self._MS5837_ADDR, self._MS5837_ADC_READ,3)
 		self._D1 = d[0] << 16 | d[1] << 8 | d[2] 
 
 		#D2 request
@@ -87,11 +77,11 @@ class MS5837(object):
 
 		sleep(2.5e-6 * 2**(8+oversampling))
 
-		d = self._bus.read_i2c_block_data(self._MS5837_ADDR, self.MS5837_ADC_READ,3)
+		d = self._bus.read_i2c_block_data(self._MS5837_ADDR, self._MS5837_ADC_READ,3)
 		self._D2 = d[0] << 16 | d[1] << 8 | d[2] 
 
 
-		return True
+		return True, self._D1, self._D2
   
 	def _crc4(self, n_prom):
 
@@ -118,10 +108,6 @@ class MS5837(object):
 		self.n_rem = n_rem
 
 		return n_rem ^ 0x00
-
-class MS5837_30BA(MS5837):
-	def _init_(self,bus=1)
-		MS5837._init_(self,MODEL_30BA,bus)
 
 class MS5837_02BA(MS5837):
 	def _init_(self,bus=1)
