@@ -38,11 +38,6 @@ parser.add_argument(
     metavar='8192')
 
 parser.add_argument(
-    '--Sampling_rate',action='store', default=2, type=float,
-    help=('Sensor sampling rate (default: %(default)s Hz)\n'),
-    metavar='2')
-
-parser.add_argument(
     '--Record_time',action='store', default=3600, type=float,
     help=('Time of recording (default: %(default)s sec)\n'),
     metavar='3600')
@@ -80,7 +75,7 @@ dT = timedelta(seconds=args.Record_time)
 EdTime = StTime + dT
 
 #Data save array
-sampl_time = 1/args.Sampling_rate
+sampl_time = 1/args.OSR
 n_samples = dT/sampl_time
 D1_save = np.zeros((n_samples,),dtype=int32)
 D2_save = np.zeros((n_samples,),dtype=int32)
