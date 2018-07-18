@@ -86,18 +86,17 @@ while datetime.utcnow() < EdTime:
 	D1_save[i] = D1
 	D2_save[i] = D2
 	i = i+1
-	time.sleep(sampl_time)
 
 #MSEED write
 
 #Channel type
-if args.Sampling_rate < 20:
+if args.OSR < 20:
 	ch = 'LDF'
-elif args.Sampling_rate > 20 and args.Sampling_rate < 80:
+elif args.OSR > 20 and args.OSR < 80:
 	ch = 'BDF'
-elif args.Sampling_rate > 80 and args.Sampling_rate < 250:
+elif args.OSR > 80 and args.OSR < 250:
 	ch = 'HDF'
-elif args.Sampling_rate > 250:
+elif args.OSR > 250:
 	ch = 'EDF'
 
 
