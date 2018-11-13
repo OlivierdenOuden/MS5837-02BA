@@ -2,114 +2,135 @@
 #
 #	MS5837-02BA Pressure sensor read I2C port
 #
-#	Based on; https://github.com/bluerobotics/ms5837-python/blob/master/ms5837.py
-#
 #	Olivier den Ouden
 #	Royal Netherlands Meteorological Institute
 #	RDSA
-#	Jul. 2018
+#	Oct. 2018
 #
 #****************************************************************#
 
 #modules
-import smbus
-from time import sleep
+import I2Cread_ms5837 as read
+import time
+import argparse
+from argparse import RawTextHelpFormatter
+from datetime import datetime, timedelta
+from obspy import UTCDateTime, read, Trace, Stream
+import numpy as np
 
-MODEL_02BA = 0
+print('')
+print('Read MS5837-02BA differential pressure sensor - I2C port')
+print('')
+print('Olivier den Ouden')
+print('Royal Netherlands Meteorological Institute, KNMI')
+print('Oct. 2018')
+print('')
 
-class MS5837(object):
-	#hex/byte commants 
-	_MS5837_ADDR		= 0x76
-	_MS5837_RESET		= 0x1E
-	_MS5837_ADC_READ	= 0x00
-	_MS5837_PROM_READ	= 0xA0
-	_MS5837_D1			= 0x40
-	_MS5837_D2			= 0x50
+
+parser = argparse.ArgumentParser(prog='Import pressure data of the MS5837-02BA.',
+    description=('Main script to import differential pressure data of the MS5837-02BA\n'
+        'to a Raspberry Pi. Data formt is MSEED. \n'
+    ), formatter_class=RawTextHelpFormatter
+)
+
+
+parser.add_argument(
+    '--OSR',action='store', default=8192, type=float,
+    help=('Oversampling rate (default: %(default)s Hz)\n'),
+    metavar='8192')
+
+parser.add_argument(
+    '--Record_time',action='store', default=3600, type=float,
+    help=('Time of recording (default: %(default)s sec)\n'),
+    metavar='3600')
+
+parser.add_argument(
+    '-v',action='store', default=0, type=float,
+    help=('Verbose, 0=off 1=on (default: %(default)s)\n'),
+    metavar='0')
+
+args = parser.parse_args()
+
+
+#Oversmapling value
+if args.OSR == 8192:
+	OverSampl = 5
+elif args.OSR == 4096:
+	OverSampl = 4
+elif args.OSR == 2048:
+	OverSampl = 3
+elif args.OSR == 1024:
+	OverSampl = 2
+elif args.OSR == 512:
+	OverSampl = 1
+elif args.OSR == 256:
+	OverSampl = 0
+
+#Time
+StTime = (datetime.utcnow())
+dT = timedelta(seconds=args.Record_time)
+EdTime = StTime + dT
+
+#Data save array
+sampl_time = 1/args.OSR
+n_samples = np.int(dT.seconds/sampl_time)
+C_values = np.zeros((7))
+D1_save = np.zeros((n_samples,),dtype=np.int32)
+D2_save = np.zeros((n_samples,),dtype=np.int32)
+
+i = 0
+while datetime.utcnow() < EdTime:
 	
-	def _init_(self, model=MODEL_02BA, bus=1):
-		self._model = model
+	#Reset and Calibration values
+	if i ==0:
+		check,C_values = read.MS5837_start()
+		if check==True:
+			print('')
+			print('Sensor reset, Calibration values saved')
+			print('Ready to record...')
+			print('')
+		else:
+			print('')
+			print('ERROR')
+			print('Sensor reset, Calibration values')
+			print('')
 
-		self._D1 = 0
-		self._D2 = 0
+	#Read data
+	check,D1,D2 = read.read(oversampling=5)
+	if args.v == 1:
+		if check == True:
+			print(datetime.utcnow(),'Sample ',i,'NO ERROR')
+		else:
+			print(datetime.utcnow(),'Sample ',i,'ERROR in recording')
+	D1_save[i] = D1
+	D2_save[i] = D2
+	i = i+1
 
-	def init(self):
-		self._bus.write_byte(self._MS5837_ADDR, self._MS5837_RESET)
+#MSEED write
 
-		sleep(0.01)
-
-		self._C = []
-
-		#read calibration
-		for i in range(7):
-			c = self._bus.read_word_data(self.MS5837_ADDR, self._MS5837_PROM_READ + 2*i)
-			c = ((c & 0xFF) << 8) | (c >> 8) #swap MSB - LSB
-			
-			self._C.append(c)
-
-		crc = (self._C[0] & 0xF000) >> 12
-		if crc != self._crc4(self._C):
-			print('PROM read error, CrC failed!')
-			return False
-
-		return True, self._C
-
-	def read(self, oversampling = 5):
-		if self._bus is None:
-			print('No bus!')
-
-			return False
-
-		if oversampling < 0 or oversampling > 5:
-
-			print('Invalid oversampling option!')
-			return False
-
-		#D1 request
-		self._bus.write_byte(self._MS5837_ADDR, self._MS5937_D1 + 2*oversampling)
-
-		sleep(2.5e-6 * 2**(8+oversampling))
-
-		d = self._bus.read_i2c_block_data(self._MS5837_ADDR, self._MS5837_ADC_READ,3)
-		self._D1 = d[0] << 16 | d[1] << 8 | d[2] 
-
-		#D2 request
-		self._bus.write_byte(self._MS5837_ADDR, self._MS5937_D2 + 2*oversampling)
-
-		sleep(2.5e-6 * 2**(8+oversampling))
-
-		d = self._bus.read_i2c_block_data(self._MS5837_ADDR, self._MS5837_ADC_READ,3)
-		self._D2 = d[0] << 16 | d[1] << 8 | d[2] 
+#Channel type
+if args.OSR < 20:
+	ch = 'LDF'
+elif args.OSR > 20 and args.OSR < 80:
+	ch = 'BDF'
+elif args.OSR > 80 and args.OSR < 250:
+	ch = 'HDF'
+elif args.OSR > 250:
+	ch = 'EDF'
 
 
-		return True, self._D1, self._D2
-  
-	def _crc4(self, n_prom):
+# Fill header attributes
+stats = {'network': 'PI', 'station': 'MS',
+         'channel': ch, 'npts': n_samples, 'sampling_rate': args.OSR,
+         'mseed': {'dataquality': 'D'}}
 
-		n_rem = 0
+stats['starttime'] = StTime
+st = Stream([Trace(data=D1_save, header=stats)])
+sr = Stream([Trace(data=D2_save, header=stats)])
+st.write("MS5837_02BA_pressure.mseed", format='MSEED', encoding=11, reclen=512)
+sr.write("MS5837_02BA_Tempr.mseed", format='MSEED', encoding=11, reclen=512)
 
-		n_prom[0] = ((n_prom[0]) & 0x0FFF)
-		n_prom.append(0)
 
-		for i in tange(16)
-			if i%2 == 2:
-				n_rem ^= ((n_prom[i>>1]) & 0x0FFF)
-			else:
-				n_rem ^= (n_prom[i>>1] >> 8)
 
-`			for n_bit in range(8,0.-1):
-				if n_rem & 0X8000:
-					n_rem = (n_rem << 1) ^ 0x3000
-				else:
-					n_rem = (n_rem << 1)
 
-		n_rem = ((n+rem >> 12) & 0x000F)
 
-		self.n_prom = n_prom
-		self.n_rem = n_rem
-
-		return n_rem ^ 0x00
-
-class MS5837_02BA(MS5837):
-	def _init_(self,bus=1)
-		MS5837._init_(self,MODEL_02BA,bus)
-	
