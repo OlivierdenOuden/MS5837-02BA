@@ -1,6 +1,6 @@
 # MS5837_02BA sensor 
 
-How to read-out MS5837_02BA digital differetial pressure sensor by use of the I2C port on a Raspberry PI model 3B+. More info on the [MS5837 sensor](http://www.te.com/commerce/DocumentDelivery/DDEController?Action=srchrtrv&DocNm=MS5837-02BA01&DocType=Data+Sheet&DocLang=English&DocFormat=pdf&PartCntxt=CAT-BLPS0059) and the [I2C port](https://learn.sparkfun.com/tutorials/raspberry-pi-spi-and-i2c-tutorial).
+Read-out of the MS5837_02BA TE Connectivity digital absolute pressure sensor by use of the I2C port on a Raspberry PI model 3B+. More info on the [MS5837 sensor](http://www.te.com/commerce/DocumentDelivery/DDEController?Action=srchrtrv&DocNm=MS5837-02BA01&DocType=Data+Sheet&DocLang=English&DocFormat=pdf&PartCntxt=CAT-BLPS0059) and the [I2C port](https://learn.sparkfun.com/tutorials/raspberry-pi-spi-and-i2c-tutorial).
 
 ## Raspberry PI - I2C port 
 
@@ -31,7 +31,7 @@ Now the I2C port is enabled but to have interaction between the PI and the senso
 sudo apt-get install -y i2c-tools
 ```
 
-The ```i2cdetect``` command probes all the addresses on a I2C port bus, and report whether any devices are present. Outcome of this command will look like;
+The ```i2cdetect``` command probes all the addresses on a I2C port bus, and report whether any devices are present. Outcome of this command, with the MS5837 sensor, will look like;
 
 ```
 pi@raspberrypi:~/$ i2cdetect -y 1
@@ -42,11 +42,11 @@ pi@raspberrypi:~/$ i2cdetect -y 1
 30: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 40: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 50: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-60: 60 -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-70: -- -- -- -- -- -- -- --
+60: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+70: -- -- -- -- -- -- 76 --
 ```
 
-Here the I2C adress of the sensor is 0x60. More information, or source, can be found [here](https://learn.sparkfun.com/tutorials/raspberry-pi-spi-and-i2c-tutorial).
+Here the I2C adress of the sensor is 0x76. More information, or source, can be found [here](https://learn.sparkfun.com/tutorials/raspberry-pi-spi-and-i2c-tutorial).
 
 ## I2C - Python 
 
@@ -58,15 +58,21 @@ sudo apt-get install python-smbus
 sudo apt-get install python-obspy
 ```
 
-## Python scripts
+## Python scripts - simple one shot data
 
-The main file to read raw sensor data of the MS5837-02BA is the ```read_ms5837.py``` script. This script calls ```ms5837.py```, wherein all needed defenitions are listed. When calling the main script some arguments are needed, [source](https://github.com/bluerobotics/ms5837-python/blob/master/ms5837.py);
+The simple script includes a one-shot data request.
+
+## Python scripts - src folder
+
+The main file to read raw sensor data of the MS5837-02BA is the ```ms5837_main.py``` script. This script includes all fuctions/defenitions needed to comunicate with the sensor. ```ms5837.py``` calls the main script and loops with a specific sampling rate. 
+
+When starting ```ms5837.py```, one can ask for the help function (-h). This function shows the arguments one can give, with the script. Those arguments are:
 
 ```
-OSR           - Oversampling rate
-Record time   - Recording time
+-t            - Time of recording
+-fs           - Sample rate
+-SamplRate    - Oversampling rate
 ```
-To create a metadata file to convert the raw data, use ```inv_ms5837.py```. Converting raw data, counts, to temperature and pressure is done by ```conv_ms5837.py```.
 
 ## Author
 
