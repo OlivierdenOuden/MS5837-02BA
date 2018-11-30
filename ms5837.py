@@ -1,14 +1,14 @@
 #*******************************************************#
-#														#
-#		MS5837 - TE Connectivity Pressure sensor		#
-#														#
-#		Read-out script.								#
-#														#
-#		Olivier den Ouden								#
-#		Royal Netherlands Meterological Institute		#
-#		RD Seismology and Acoustics						#
-#		https://www.seabirdsound.org 					#
-#														#
+#							#
+#	MS5837 - TE Connectivity Pressure sensor	#
+#							#
+#	Read-out script.				#
+#							#
+#	Olivier den Ouden				#
+#	Royal Netherlands Meterological Institute	#
+#	RD Seismology and Acoustics			#
+#	https://www.seabirdsound.org 			#
+#							#
 #*******************************************************#
 
 
